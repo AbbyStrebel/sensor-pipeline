@@ -1,0 +1,12 @@
+# Project-wide defaults. Checked into git so builds are reproducible;
+# the generated sdkconfig (machine-specific) is gitignored.
+
+# Target chip.
+CONFIG_IDF_TARGET="esp32"
+
+# --- Debugging aids useful for RTOS learning (cheap, keep on in dev) ---
+# Detect task stack overflows (method 2 = canary + SP check).
+CONFIG_FREERTOS_CHECK_STACKOVERFLOW_CANARY=y
+# Record task high-water marks so we can inspect stack usage.
+CONFIG_FREERTOS_USE_TRACE_FACILITY=y
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y

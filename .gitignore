@@ -1,0 +1,30 @@
+# ESP-IDF build output
+build/
+test_host/build/
+
+# Generated, machine-specific config (sdkconfig.defaults IS tracked)
+sdkconfig
+sdkconfig.old
+test_host/sdkconfig
+test_host/sdkconfig.old
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Coverage artifacts (Phase 1)
+*.gcno
+*.gcda
+*.info
+coverage/
+
+# Secrets — never commit signing keys (Phase 5)
+*.pem
+secure_boot_signing_key.pem
+*.key
