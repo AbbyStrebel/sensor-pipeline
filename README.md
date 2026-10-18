@@ -5,6 +5,10 @@ engineering practices** (CI/CD, unit testing, static analysis, memory tooling,
 and device security). Built in independent phases — each phase is useful on its
 own and builds on the last.
 
+> **New here?** See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the branch/PR/CI
+> workflow, [`docs/adr/`](docs/adr/) for why key decisions were made, and
+> `make docs` to build the API documentation.
+
 ## Why it's structured this way
 
 The core idea is a **hard split between pure logic and hardware code**:
