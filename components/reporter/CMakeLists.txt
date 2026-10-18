@@ -1,8 +1,8 @@
-# Hardware-facing component: depends on FreeRTOS + driver (UART in Phase 2).
+# Consumer task component: filters samples via `processor` and logs results.
 idf_component_register(
     SRCS "reporter.c"
     INCLUDE_DIRS "include"
-    REQUIRES processor freertos
+    REQUIRES contracts processor freertos
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
