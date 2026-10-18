@@ -104,6 +104,41 @@ We use Doxygen (`/** ... */`) comments on the public API. The standard:
 - Record significant decisions as an ADR under `docs/adr/` rather than burying
   the rationale in a commit message.
 
+## Releasing (firmware artifacts)
+
+Every push/PR builds a **firmware bundle** (`tools/package.sh`) and uploads it
+as a CI artifact. The bundle contains everything needed to flash a bare board
+plus traceability data:
+
+```
+<app>-<gitref>/
+├── bootloader.bin  partition-table.bin  <app>.bin   # flashable set
+├── flash_args  flasher_args.json                     # offsets + flash settings
+├── <app>.elf  <app>.map                              # debug symbols / memory map
+├── SHA256SUMS                                         # integrity
+├── manifest.json                                      # git commit/ref, IDF ver, target, timestamps
+└── flash.sh                                           # ./flash.sh [PORT] to flash it all
+```
+
+Build it locally anytime:
+
+```sh
+. "$IDF_PATH/export.sh" && idf.py build
+./tools/package.sh          # -> dist/<app>-<gitref>/ and a .tar.gz
+```
+
+**To publish a GitHub Release**, push a version tag. The `release` CI job (the
+only job with `contents: write`, and it runs *only* on `v*` tags) builds the
+bundle and attaches it to a Release:
+
+```sh
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+Use [semantic versioning](https://semver.org/) for tags (`vMAJOR.MINOR.PATCH`).
+Firmware signing (Phase 5) will plug into this release step later.
+
 ## Why this much process for a learning project?
 
 Practicing the workflow *is* one of the goals. Doing it on a small, low-stakes

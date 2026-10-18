@@ -79,7 +79,6 @@ Unity is sourced from `$IDF_PATH` (not vendored). Override `UNITY_DIR` or
       build), valgrind, and gcov coverage; GitHub Actions runs them on every
       push/PR alongside the esp32 firmware build. Pinned to ESP-IDF
       `release-v5.5`.
-- [ ] **Phase 2 — RTOS wiring.** Real sampler/reporter tasks, a queue, a
 - [x] **Phase 2 — RTOS wiring.** Real sampler (producer, pri 5) and reporter
       (consumer, pri 4) FreeRTOS tasks, a queue between them, and mutex-protected
       shared config. Builds with `-Werror`. On-target behavior to be verified in
@@ -87,6 +86,11 @@ Unity is sourced from `$IDF_PATH` (not vendored). Override `UNITY_DIR` or
 - [x] **Phase 3 — Lint gate.** Curated clang-tidy + cppcheck + clang-format
       check in CI, plus pre-commit hooks for local use. (`-Werror` landed earlier
       as part of hardening.)
+- [x] **Phase 3.5 — CD / release packaging.** `tools/package.sh` builds a full
+      flashable bundle (bootloader + partition table + app + flash_args + ELF +
+      map), with SHA-256 checksums, a `manifest.json`, and a `flash.sh`. CI
+      uploads it on every push/PR and publishes a GitHub Release on `v*` tags
+      (release job scoped to `contents: write`, tag-triggered only).
 - [ ] **Phase 4 — On-target CI.** Self-hosted GitHub runner with an ESP32
       attached; pytest-embedded flashes + tests real hardware.
 - [ ] **Phase 5 — Security capstone.** Secure Boot v2 + flash encryption in
