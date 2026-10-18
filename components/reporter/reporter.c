@@ -71,8 +71,8 @@ static void reporter_task(void *arg)
         float smoothed = 0.0F;
         processor_filter_push(&filter, s.value, &smoothed);
 
-        ESP_LOGI(TAG, "seq=%u raw=%.3f smoothed=%.3f", (unsigned)s.seq,
-                 (double)s.value, (double)smoothed);
+        ESP_LOGI(TAG, "seq=%u raw=%.3f smoothed=%.3f", (unsigned)s.seq, (double)s.value,
+                 (double)smoothed);
     }
 }
 
@@ -85,8 +85,8 @@ int reporter_start(QueueHandle_t in_queue, reporter_config_t *config)
     s_in_queue = in_queue;
     s_config   = config;
 
-    BaseType_t ok = xTaskCreate(reporter_task, "reporter", REPORTER_STACK_WORDS,
-                                NULL, REPORTER_PRIORITY, NULL);
+    BaseType_t ok =
+        xTaskCreate(reporter_task, "reporter", REPORTER_STACK_WORDS, NULL, REPORTER_PRIORITY, NULL);
     if (ok != pdPASS) {
         ESP_LOGE(TAG, "failed to create reporter task");
         return 1;

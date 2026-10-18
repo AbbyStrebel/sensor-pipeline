@@ -43,7 +43,7 @@ static void sampler_task(void *arg)
     uint32_t seq = 0;
 
     /* vTaskDelayUntil needs a reference "last wake time", seeded with now. */
-    TickType_t       last_wake   = xTaskGetTickCount();
+    TickType_t       last_wake    = xTaskGetTickCount();
     const TickType_t period_ticks = pdMS_TO_TICKS(SAMPLER_PERIOD_MS);
 
     for (;;) {
@@ -82,8 +82,8 @@ int sampler_start(QueueHandle_t out_queue)
 
     /* Create the task. The scheduler will start running it. Returns pdPASS on
      * success, or pdFAIL if there wasn't enough heap for the task's stack. */
-    BaseType_t ok = xTaskCreate(sampler_task, "sampler", SAMPLER_STACK_WORDS,
-                                NULL, SAMPLER_PRIORITY, NULL);
+    BaseType_t ok =
+        xTaskCreate(sampler_task, "sampler", SAMPLER_STACK_WORDS, NULL, SAMPLER_PRIORITY, NULL);
     if (ok != pdPASS) {
         ESP_LOGE(TAG, "failed to create sampler task");
         return 1;

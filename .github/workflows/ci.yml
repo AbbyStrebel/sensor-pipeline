@@ -127,3 +127,43 @@ jobs:
           name: api-docs-html
           path: docs/html
           if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Lint gate: formatting + static analysis on first-party code.
+  # Runs in the IDF container because clang-tidy needs the compile database that
+  # `idf.py build` generates. clang-format and cppcheck are build-independent.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (clang-format, clang-tidy, cppcheck)
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install lint tooling
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            clang-tidy clang-format cppcheck python3
+
+      - name: clang-format (check only, fails on any diff)
+        shell: bash
+        run: |
+          mapfile -t files < <(find components main -name '*.c' -o -name '*.h')
+          clang-format --dry-run --Werror "${files[@]}"
+
+      - name: cppcheck
+        shell: bash
+        run: ./tools/cppcheck.sh
+
+      - name: Build (for clang-tidy compile database)
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py build
+
+      - name: clang-tidy
+        shell: bash
+        run: ./tools/clang-tidy.sh

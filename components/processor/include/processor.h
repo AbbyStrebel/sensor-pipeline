@@ -34,11 +34,11 @@ typedef enum {
  * use inside a FreeRTOS task with a bounded stack.
  */
 typedef struct {
-    float    samples[PROCESSOR_MAX_WINDOW]; /**< ring buffer of recent samples */
-    size_t   window;                        /**< active window size (1..MAX)   */
-    size_t   count;                         /**< samples seen (saturates)      */
-    size_t   head;                          /**< next write index              */
-    double   running_sum;                   /**< sum of in-window samples      */
+    float  samples[PROCESSOR_MAX_WINDOW]; /**< ring buffer of recent samples */
+    size_t window;                        /**< active window size (1..MAX)   */
+    size_t count;                         /**< samples seen (saturates)      */
+    size_t head;                          /**< next write index              */
+    double running_sum;                   /**< sum of in-window samples      */
 } processor_filter_t;
 
 /**

@@ -84,8 +84,9 @@ Unity is sourced from `$IDF_PATH` (not vendored). Override `UNITY_DIR` or
       (consumer, pri 4) FreeRTOS tasks, a queue between them, and mutex-protected
       shared config. Builds with `-Werror`. On-target behavior to be verified in
       Phase 4 (or by manual flash).
-- [ ] **Phase 3 — Lint gate.** clang-tidy + cppcheck + pre-commit hooks.
-      (`-Werror` already landed as part of hardening.)
+- [x] **Phase 3 — Lint gate.** Curated clang-tidy + cppcheck + clang-format
+      check in CI, plus pre-commit hooks for local use. (`-Werror` landed earlier
+      as part of hardening.)
 - [ ] **Phase 4 — On-target CI.** Self-hosted GitHub runner with an ESP32
       attached; pytest-embedded flashes + tests real hardware.
 - [ ] **Phase 5 — Security capstone.** Secure Boot v2 + flash encryption in
