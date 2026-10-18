@@ -1,0 +1,44 @@
+# Curated clang-tidy configuration.
+#
+# Philosophy: enable the high-signal checks (real bugs, portability, security)
+# and leave off the noisy/opinionated ones that fight embedded C and ESP-IDF
+# idioms. Tighten over time rather than enabling everything at once.
+#
+# Run via the wrapper (it sanitizes the Xtensa compile DB for clang-tidy):
+#   tools/clang-tidy.sh          # check
+#   tools/clang-tidy.sh --fix    # auto-fix where possible
+
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  cert-*,
+  portability-*,
+  misc-*,
+  readability-non-const-parameter,
+  readability-misleading-indentation,
+  readability-inconsistent-declaration-parameter-name,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-signed-bitwise,
+  -misc-no-recursion,
+  -misc-include-cleaner,
+  -misc-use-internal-linkage,
+  -cert-err33-c
+
+# Disabled checks and why:
+#   bugprone-easily-swappable-parameters  - flags normal (f, in, out) signatures
+#   bugprone-signed-bitwise               - only fires inside ESP-IDF's ESP_LOG
+#                                           macros, not our code; unfixable here
+#   misc-no-recursion                     - noisy; we have none
+#   misc-include-cleaner                  - fights IDF include conventions
+#   misc-use-internal-linkage             - app_main must stay extern (IDF calls it)
+#   cert-err33-c                          - demands checking every printf return
+
+# Only report on OUR source + headers, never ESP-IDF or toolchain headers.
+HeaderFilterRegex: '.*/(components|main)/.*'
+
+# A finding is a warning; the CI job decides whether warnings fail the build
+# (it runs clang-tidy with --warnings-as-errors).
+WarningsAsErrors: ''
+
+FormatStyle: file

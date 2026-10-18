@@ -1,0 +1,37 @@
+# pre-commit hooks: fast checks that run locally before each commit.
+# Install once per clone:  pre-commit install
+# Run on everything:       pre-commit run --all-files
+#
+# These mirror a subset of the CI lint gate so problems are caught locally.
+# clang-tidy is intentionally NOT here (it needs a full build + compile DB,
+# which is too heavy for a commit hook) -- CI runs it.
+
+repos:
+  # General hygiene.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # C formatting, enforced against our .clang-format.
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.0
+    hooks:
+      - id: clang-format
+        files: \.(c|h)$
+        # Only our first-party code; never reformat vendored/third-party.
+        exclude: ^(build|docs/html)/
+
+  # cppcheck static analysis via our shared wrapper (single source of truth).
+  - repo: local
+    hooks:
+      - id: cppcheck
+        name: cppcheck (first-party sources)
+        entry: tools/cppcheck.sh
+        language: script
+        pass_filenames: false
+        files: \.(c|h)$

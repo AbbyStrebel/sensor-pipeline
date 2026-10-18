@@ -62,7 +62,6 @@ int app_core_start(void)
         return rc;
     }
 
-    ESP_LOGI(TAG, "pipeline running (queue_len=%d, window=%d)", QUEUE_LENGTH,
-             DEFAULT_WINDOW);
+    ESP_LOGI(TAG, "pipeline running (queue_len=%d, window=%d)", QUEUE_LENGTH, DEFAULT_WINDOW);
     return 0;
 }

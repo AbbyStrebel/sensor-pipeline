@@ -19,8 +19,12 @@
 #include <math.h>
 #include <stddef.h>
 
-void setUp(void) {}
-void tearDown(void) {}
+void setUp(void)
+{
+}
+void tearDown(void)
+{
+}
 
 static void test_init_rejects_null_and_bad_windows(void)
 {

@@ -27,6 +27,35 @@ and a pull request:
 
 Branch name prefixes: `feat/`, `fix/`, `docs/`, `chore/`.
 
+## Developer tooling
+
+Beyond ESP-IDF, the linting/testing gate uses these tools. Install them once so
+your local checks match CI.
+
+| Tool | Purpose | Install (Arch) |
+|------|---------|----------------|
+| clang-format | C code formatting | `sudo pacman -S clang` |
+| clang-tidy | Static analysis | `sudo pacman -S clang` |
+| cppcheck | Static analysis (second opinion) | `sudo pacman -S cppcheck` |
+| pre-commit | Runs the fast checks before each commit | `sudo pacman -S pre-commit` |
+| doxygen | API docs | `sudo pacman -S doxygen` |
+| valgrind, gcovr | Host memory check / coverage | `sudo pacman -S valgrind gcovr` |
+
+> On non-Arch systems, use your package manager's equivalents; `clang-format`
+> and `clang-tidy` ship in the LLVM/clang package. CI installs all of these in
+> the `espressif/idf` container, so the versions there are the source of truth.
+
+**Enable the pre-commit hooks (once per clone):**
+
+```sh
+pre-commit install          # installs the git hook
+pre-commit run --all-files  # run every hook against the whole tree
+```
+
+After `pre-commit install`, the hygiene + clang-format + cppcheck hooks run
+automatically on every `git commit`. (clang-tidy is not a pre-commit hook — it
+needs a full build + compile database — so it runs in CI only.)
+
 ## Local checks (run before pushing)
 
 ```sh
@@ -38,6 +67,11 @@ make -C test_host test
 make -C test_host asan
 make -C test_host valgrind
 make -C test_host coverage
+
+# Lint gate (static analysis + formatting):
+pre-commit run --all-files   # clang-format + cppcheck + hygiene
+./tools/cppcheck.sh          # cppcheck alone
+idf.py build && ./tools/clang-tidy.sh   # clang-tidy (needs the compile DB)
 
 # API docs (optional locally; built in CI):
 make docs
