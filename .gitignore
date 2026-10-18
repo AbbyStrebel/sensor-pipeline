@@ -31,3 +31,6 @@ docs/html/
 *.pem
 secure_boot_signing_key.pem
 *.key
+
+# CD artifact bundles (tools/package.sh output)
+dist/
