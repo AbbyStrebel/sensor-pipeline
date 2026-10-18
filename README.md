@@ -45,23 +45,36 @@ idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### Host tests (linux target)
+### Host tests (native gcc, not the IDF linux target)
+
+The pure-logic `processor` component has no IDF dependencies, so host unit tests
+build as a plain native binary via a small Makefile. This is deliberate:
+
+- builds in under a second (no ESP-IDF component tree to compile),
+- produces working `gcov` coverage — the ESP-IDF *linux target* runtime
+  intercepts filesystem calls and prevents `.gcda` files from being written,
+  so coverage does not work there,
+- runs cleanly under valgrind.
 
 ```sh
-. $IDF_PATH/export.sh
 cd test_host
-idf.py --preview set-target linux
-idf.py build
-./build/test_host.elf           # run tests
-valgrind --error-exitcode=1 ./build/test_host.elf   # with valgrind
+make test        # build + run the unit tests
+make coverage    # build with gcov, run, print coverage summary
+make valgrind    # run under valgrind (fails on any leak/error)
+make clean
 ```
+
+Unity is sourced from `$IDF_PATH` (not vendored). Override `UNITY_DIR` or
+`IDF_PATH` if yours lives elsewhere.
 
 ## Phase plan
 
 - [x] **Phase 0 — Skeleton.** Dual-target component layout; esp32 + linux builds
       both green; clang-format, gitignore, README.
-- [ ] **Phase 1 — Host tests in CI.** Unity tests for `processor`, valgrind,
-      coverage; GitHub Actions runs them on every push.
+- [x] **Phase 1 — Host tests in CI.** Unity tests for `processor` (native gcc
+      build), valgrind, and gcov coverage; GitHub Actions runs them on every
+      push/PR alongside the esp32 firmware build. Pinned to ESP-IDF
+      `release-v5.5`.
 - [ ] **Phase 2 — RTOS wiring.** Real sampler/reporter tasks, a queue, a
       mutex-protected shared state, UART output. Runs on a board.
 - [ ] **Phase 3 — Lint gate.** clang-tidy + cppcheck + `-Werror` in CI.

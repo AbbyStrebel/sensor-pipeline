@@ -1,12 +1,9 @@
 # ESP-IDF build output
 build/
-test_host/build/
 
 # Generated, machine-specific config (sdkconfig.defaults IS tracked)
 sdkconfig
 sdkconfig.old
-test_host/sdkconfig
-test_host/sdkconfig.old
 
 # Editor / OS
 .vscode/
@@ -18,10 +15,13 @@ test_host/sdkconfig.old
 __pycache__/
 *.pyc
 
-# Coverage artifacts (Phase 1)
+# Host test + coverage artifacts
+test_host/test_host
 *.gcno
 *.gcda
+*.gcov
 *.info
+coverage.xml
 coverage/
 
 # Secrets — never commit signing keys (Phase 5)

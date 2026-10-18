@@ -1,0 +1,89 @@
+name: CI
+
+# Run on pushes to main and on every pull request targeting main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build the real firmware for the esp32 target. Proves the hardware-facing
+  # code and component wiring compile with the pinned, stable ESP-IDF release.
+  # ---------------------------------------------------------------------------
+  firmware-build:
+    name: Firmware build (esp32)
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build firmware
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py set-target esp32
+          idf.py build
+
+      - name: Upload firmware binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-esp32
+          path: build/sensor_pipeline.bin
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Host unit tests for the pure logic. Built as a plain native binary (gcc),
+  # NOT the IDF linux target: the `processor` component has no IDF deps, so this
+  # is fast, produces working gcov coverage, and runs under valgrind.
+  #
+  # Unity is still taken from ESP-IDF, so the IDF image is a convenient base
+  # that already has it on disk at $IDF_PATH.
+  # ---------------------------------------------------------------------------
+  host-tests:
+    name: Host tests + valgrind + coverage
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v5.5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install host test tooling
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential valgrind gcovr
+
+      - name: Run unit tests
+        shell: bash
+        working-directory: test_host
+        run: make test
+
+      - name: Run unit tests under valgrind
+        shell: bash
+        working-directory: test_host
+        run: make valgrind
+
+      - name: Coverage report
+        shell: bash
+        working-directory: test_host
+        run: |
+          make coverage
+          # Emit a machine-readable report for the artifact.
+          gcovr --root .. --filter '../components/processor/' \
+                --xml coverage.xml --txt
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: test_host/coverage.xml
+          if-no-files-found: warn

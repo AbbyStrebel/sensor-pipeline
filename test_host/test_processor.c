@@ -1,20 +1,28 @@
 /**
  * @file test_processor.c
- * @brief Host-side Unity tests for the pure processor logic.
+ * @brief Host-side unit tests for the pure processor logic.
  *
- * Runs on the linux target (x86) so it executes under valgrind / ASan in CI.
+ * Built as a plain native (gcc) binary via the Makefile in this directory —
+ * NOT through the ESP-IDF linux target. The `processor` component has zero IDF
+ * dependencies, so compiling it natively lets the tests:
+ *   - build in well under a second (no IDF component tree),
+ *   - produce working gcov coverage data (the IDF linux-target runtime
+ *     intercepts filesystem calls and prevents .gcda files being written),
+ *   - run cleanly under valgrind.
+ *
+ * Uses vanilla Unity (RUN_TEST), so it is portable to any host toolchain.
  */
 #include "processor.h"
 
 #include "unity.h"
 
 #include <math.h>
-#include <stdlib.h>
+#include <stddef.h>
 
 void setUp(void) {}
 void tearDown(void) {}
 
-TEST_CASE("init rejects NULL and bad windows", "[processor]")
+static void test_init_rejects_null_and_bad_windows(void)
 {
     processor_filter_t f;
     TEST_ASSERT_EQUAL(PROCESSOR_ERR_NULL_ARG, processor_filter_init(NULL, 4));
@@ -24,7 +32,7 @@ TEST_CASE("init rejects NULL and bad windows", "[processor]")
     TEST_ASSERT_EQUAL(PROCESSOR_OK, processor_filter_init(&f, 4));
 }
 
-TEST_CASE("push rejects NULL args", "[processor]")
+static void test_push_rejects_null_args(void)
 {
     processor_filter_t f;
     float              out = 0.0F;
@@ -33,7 +41,7 @@ TEST_CASE("push rejects NULL args", "[processor]")
     TEST_ASSERT_EQUAL(PROCESSOR_ERR_NULL_ARG, processor_filter_push(&f, 1.0F, NULL));
 }
 
-TEST_CASE("average before window fills uses count seen so far", "[processor]")
+static void test_average_before_window_fills(void)
 {
     processor_filter_t f;
     float              out = 0.0F;
@@ -46,7 +54,7 @@ TEST_CASE("average before window fills uses count seen so far", "[processor]")
     TEST_ASSERT_FLOAT_WITHIN(1e-5F, 3.0F, out); /* avg of {2,4} */
 }
 
-TEST_CASE("steady-state average slides over the window", "[processor]")
+static void test_steady_state_slides_over_window(void)
 {
     processor_filter_t f;
     float              out = 0.0F;
@@ -60,7 +68,7 @@ TEST_CASE("steady-state average slides over the window", "[processor]")
     TEST_ASSERT_FLOAT_WITHIN(1e-5F, 4.0F, out);
 }
 
-TEST_CASE("window of 1 is a passthrough", "[processor]")
+static void test_window_of_one_is_passthrough(void)
 {
     processor_filter_t f;
     float              out = 0.0F;
@@ -71,15 +79,13 @@ TEST_CASE("window of 1 is a passthrough", "[processor]")
     TEST_ASSERT_FLOAT_WITHIN(1e-5F, -7.0F, out);
 }
 
-void app_main(void)
+int main(void)
 {
     UNITY_BEGIN();
-    unity_run_all_tests();
-    int failures = UNITY_END();
-
-    /* On the linux target, returning from app_main() hands control back to the
-     * simulated FreeRTOS scheduler, which then spins forever in the idle task
-     * and the process never terminates. Explicitly exit with the failure count
-     * as the status code so the test binary is CI-friendly (0 = pass). */
-    exit(failures);
+    RUN_TEST(test_init_rejects_null_and_bad_windows);
+    RUN_TEST(test_push_rejects_null_args);
+    RUN_TEST(test_average_before_window_fills);
+    RUN_TEST(test_steady_state_slides_over_window);
+    RUN_TEST(test_window_of_one_is_passthrough);
+    return UNITY_END();
 }
