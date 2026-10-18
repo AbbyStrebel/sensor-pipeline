@@ -92,3 +92,38 @@ jobs:
           name: coverage-xml
           path: test_host/coverage.xml
           if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Build the API documentation with Doxygen and publish it as an artifact.
+  # Fails if Doxygen emits any warning, keeping docs honest as code changes.
+  # ---------------------------------------------------------------------------
+  docs:
+    name: API docs (Doxygen)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends doxygen
+
+      - name: Build docs (warnings fail the build)
+        shell: bash
+        run: |
+          # Treat any Doxygen warning as an error.
+          warnings="$(doxygen docs/Doxyfile 2>&1 >/dev/null || true)"
+          if [ -n "$warnings" ]; then
+            echo "Doxygen emitted warnings:"
+            echo "$warnings"
+            exit 1
+          fi
+          test -f docs/html/index.html
+
+      - name: Upload HTML docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docs-html
+          path: docs/html
+          if-no-files-found: error

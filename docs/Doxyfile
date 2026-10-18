@@ -1,0 +1,45 @@
+# Doxygen configuration for sensor-pipeline.
+# Minimal, curated config (not the full `doxygen -g` dump). Build with:
+#   make docs        (from repo root)   -> docs/html/index.html
+# or directly:
+#   doxygen docs/Doxyfile
+
+PROJECT_NAME           = "sensor-pipeline"
+PROJECT_BRIEF          = "ESP32 FreeRTOS sensor pipeline — learning project"
+OUTPUT_DIRECTORY       = docs
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+
+# --- Inputs ---------------------------------------------------------------
+# Document first-party code only (our components + app entrypoint). We do NOT
+# document ESP-IDF itself.
+INPUT                  = components main README.md CONTRIBUTING.md docs/adr
+FILE_PATTERNS          = *.c *.h *.md
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = README.md
+# The ADR directory index shares the name README.md and would otherwise be
+# treated as a second \mainpage; exclude it (the individual ADRs are rendered).
+EXCLUDE                = docs/adr/README.md
+
+# --- Extraction -----------------------------------------------------------
+# Only document things that actually have comments; don't invent entries for
+# undocumented internals. This keeps the output honest and matches our policy
+# of not over-documenting stubs.
+EXTRACT_ALL            = NO
+EXTRACT_STATIC         = YES
+WARN_IF_UNDOCUMENTED   = NO
+QUIET                  = YES
+
+# --- Source browsing ------------------------------------------------------
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+STRIP_CODE_COMMENTS    = NO
+
+# --- C-friendly settings --------------------------------------------------
+OPTIMIZE_OUTPUT_FOR_C  = YES
+TYPEDEF_HIDES_STRUCT   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = NO
+
+# --- Diagrams (text-only; no graphviz dependency required) ----------------
+HAVE_DOT               = NO

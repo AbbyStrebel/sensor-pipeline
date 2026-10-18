@@ -24,6 +24,9 @@ test_host/test_host
 coverage.xml
 coverage/
 
+# Generated API docs (built by `make docs` / CI)
+docs/html/
+
 # Secrets — never commit signing keys (Phase 5)
 *.pem
 secure_boot_signing_key.pem
