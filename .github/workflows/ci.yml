@@ -244,3 +244,44 @@ jobs:
             dist/*.tar.gz
           generate_release_notes: true
           fail_on_unmatched_files: true
+
+  # ---------------------------------------------------------------------------
+  # Publish the API docs to GitHub Pages. Runs only on pushes to main (never on
+  # PRs or tags). Scoped pages/id-token write permissions, this job only.
+  # ---------------------------------------------------------------------------
+  deploy-docs:
+    name: Deploy docs to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # publish to Pages
+      id-token: write   # OIDC token the deploy-pages action verifies
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends doxygen
+
+      - name: Build docs (warnings fail the build)
+        shell: bash
+        run: |
+          warnings="$(doxygen docs/Doxyfile 2>&1 >/dev/null || true)"
+          if [ -n "$warnings" ]; then
+            echo "Doxygen emitted warnings:"; echo "$warnings"; exit 1
+          fi
+          test -f docs/html/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
