@@ -67,6 +67,11 @@ jobs:
         working-directory: test_host
         run: make test
 
+      - name: Run unit tests under Address/UB sanitizers
+        shell: bash
+        working-directory: test_host
+        run: make asan
+
       - name: Run unit tests under valgrind
         shell: bash
         working-directory: test_host

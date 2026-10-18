@@ -8,6 +8,7 @@
 #   make test       build and run the unit tests
 #   make coverage   build with gcov, run, and print a coverage summary
 #   make valgrind   run the tests under valgrind (fails on leaks/errors)
+#   make asan       build+run with Address/UB sanitizers (fails on any finding)
 #   make clean      remove build artifacts
 #
 # Unity is sourced from ESP-IDF so we don't vendor a copy. Override UNITY_DIR
@@ -18,16 +19,16 @@ IDF_PATH ?= $(HOME)/esp/esp-idf
 UNITY_DIR ?= $(IDF_PATH)/components/unity/unity/src
 PROC_DIR  := ../components/processor
 
-CFLAGS  := -std=c11 -Wall -Wextra -O0 -g \
+CFLAGS  := -std=c11 -Wall -Wextra -Werror -O0 -g \
            -I$(UNITY_DIR) -I$(PROC_DIR)/include
 LDFLAGS := -lm
 
 SRCS := test_processor.c $(UNITY_DIR)/unity.c $(PROC_DIR)/processor.c
 BIN  := test_host
 
-.PHONY: test coverage valgrind clean
+.PHONY: test coverage valgrind asan clean
 
-test: $(BIN)
+test: clean $(BIN)
 	./$(BIN)
 
 $(BIN): $(SRCS)
@@ -42,8 +43,17 @@ coverage: clean $(BIN)
 	  || gcov -b $(BIN)-processor 2>/dev/null \
 	  || gcov processor.c 2>/dev/null
 
-valgrind: $(BIN)
+valgrind: clean $(BIN)
 	valgrind --leak-check=full --error-exitcode=1 ./$(BIN)
+
+# Address + Undefined Behavior sanitizers. Instrumented at compile time, so we
+# build a dedicated binary. halt_on_error=1 makes any finding fail the run.
+asan: CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer
+asan: LDFLAGS += -fsanitize=address,undefined
+asan: clean $(BIN)
+	ASAN_OPTIONS=halt_on_error=1:abort_on_error=1 \
+	UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+	./$(BIN)
 
 clean:
 	rm -f $(BIN) *.gcno *.gcda *.gcov coverage.xml
