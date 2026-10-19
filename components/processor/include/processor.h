@@ -32,6 +32,12 @@ typedef enum {
  *
  * Fixed-capacity ring buffer so it needs no dynamic allocation — suitable for
  * use inside a FreeRTOS task with a bounded stack.
+ *
+ * @warning The window size is IMMUTABLE after @ref processor_filter_init. The
+ * ring-buffer bookkeeping (head wrap via `% window`, overwrite subtraction from
+ * `running_sum`) assumes `window` never changes for the life of the filter. To
+ * change the window, call @ref processor_filter_init again to fully re-init
+ * (this discards accumulated history). Do NOT mutate `window` in place.
  */
 typedef struct {
     float  samples[PROCESSOR_MAX_WINDOW]; /**< ring buffer of recent samples */
