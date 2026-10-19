@@ -92,11 +92,29 @@ Unity is sourced from `$IDF_PATH` (not vendored). Override `UNITY_DIR` or
       map), with SHA-256 checksums, a `manifest.json`, and a `flash.sh`. CI
       uploads it on every push/PR and publishes a GitHub Release on `v*` tags
       (release job scoped to `contents: write`, tag-triggered only).
-- [ ] **Phase 4 — On-target CI.** Self-hosted GitHub runner with an ESP32
-      attached; pytest-embedded flashes + tests real hardware.
+- [~] **Phase 4 — On-target CI.** pytest-embedded tests
+      ([`test_target/`](test_target/)) and a guarded, Pi/SBC-friendly
+      self-hosted-runner job (consumes the prebuilt bundle, flashes, tests) are
+      **done**. Remaining: acquire + register the runner hardware (see below).
+      Setup + security: [`docs/self-hosted-runner.md`](docs/self-hosted-runner.md).
 - [ ] **Phase 5 — Security capstone.** Secure Boot v2 + flash encryption in
       **development mode** on a sacrificial board; firmware signed in CI with a
       key stored as a CI secret. Done = board rejects an unsigned image.
+
+## Hardware to acquire (unblocks later phases)
+
+Some phases need physical hardware that isn't on hand yet:
+
+- **Self-hosted runner box (Phase 4).** A sacrificial, network-isolated machine
+  with an ESP32 permanently attached, to run the `on-target` CI job. A cheap x86
+  mini-PC or a Raspberry Pi 4/5 is ideal; a Pi Zero 2 W is marginal (flash-and-
+  test only). The job is build-free specifically so a modest SBC suffices. Must
+  be VLAN-isolated and run a non-privileged runner user — see
+  [`docs/self-hosted-runner.md`](docs/self-hosted-runner.md). *(Blocked on
+  acquiring the box + network setup.)*
+- **Sacrificial ESP32 for Phase 5.** eFuse burning (Secure Boot / flash
+  encryption) is irreversible, so it is done on a board you can afford to lock,
+  in development mode. One of the three on-hand ESP32s can serve.
 
 ## Toolchain notes
 

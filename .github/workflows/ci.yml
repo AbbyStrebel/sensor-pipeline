@@ -285,3 +285,62 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # ---------------------------------------------------------------------------
+  # On-target hardware test. Runs on a SELF-HOSTED runner that has an ESP32
+  # attached (runner label: esp32). SECURITY: self-hosted + public repo is only
+  # safe if this job runs exclusively on trusted events. It is therefore:
+  #   - gated to push events on main of THIS repo (never PRs, never forks),
+  #   - Pi/SBC-friendly: it does NOT build; it downloads the prebuilt bundle
+  #     from the `package` job, flashes it, and runs pytest-embedded.
+  # See docs/self-hosted-runner.md for runner setup + hardening.
+  # ---------------------------------------------------------------------------
+  on-target:
+    name: On-target test (self-hosted ESP32)
+    needs: package
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'AbbyStrebel/sensor-pipeline'
+    runs-on: [self-hosted, esp32]
+    # The serial port the ESP32 enumerates as on the runner. Override with a
+    # repository variable (Settings -> Secrets and variables -> Actions ->
+    # Variables) named ESP32_PORT; defaults to /dev/ttyUSB0.
+    env:
+      ESP32_PORT: ${{ vars.ESP32_PORT || '/dev/ttyUSB0' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download firmware bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-bundle
+          path: bundle
+
+      - name: Extract bundle
+        shell: bash
+        run: |
+          mkdir -p bundle/extracted
+          tar -xzf bundle/*.tar.gz -C bundle/extracted --strip-components=1
+
+      - name: Set up Python deps for pytest-embedded
+        shell: bash
+        run: |
+          python3 -m pip install --user --quiet \
+            pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf
+
+      - name: Flash prebuilt bundle
+        shell: bash
+        working-directory: bundle/extracted
+        run: ./flash.sh "$ESP32_PORT"
+
+      - name: Run on-target tests
+        shell: bash
+        working-directory: test_target
+        # --app-path points at the extracted bundle so pytest-embedded can find
+        # the flashed binaries' metadata; the board is already flashed above.
+        run: |
+          python3 -m pytest -v \
+            --target esp32 \
+            --port "$ESP32_PORT" \
+            --app-path "$GITHUB_WORKSPACE/bundle/extracted"
