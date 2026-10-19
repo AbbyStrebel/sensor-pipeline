@@ -32,6 +32,7 @@ sensor-pipeline/
 ├── main/                     # app_main — esp32 entrypoint, delegates to app_core
 ├── components/
 │   ├── processor/            # PURE LOGIC: moving-average filter. No IDF deps.
+│   ├── contracts/            # shared message types (sample_t); no logic
 │   ├── sampler/              # FreeRTOS task: samples source -> queue (Phase 2)
 │   ├── reporter/             # FreeRTOS task: queue -> UART output (Phase 2)
 │   └── app_core/             # composition root: creates queues/tasks
