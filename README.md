@@ -6,8 +6,9 @@ and device security). Built in independent phases — each phase is useful on it
 own and builds on the last.
 
 > **New here?** See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the branch/PR/CI
-> workflow, [`docs/adr/`](docs/adr/) for why key decisions were made, and the
-> published **[API docs](https://abbystrebel.github.io/sensor-pipeline/)**
+> workflow, [`docs/adr/`](docs/adr/) for why key decisions were made,
+> [`docs/roadmap.md`](docs/roadmap.md) for current status + deferred work, and
+> the published **[API docs](https://abbystrebel.github.io/sensor-pipeline/)**
 > (or run `make docs` to build them locally).
 
 ## Why it's structured this way
