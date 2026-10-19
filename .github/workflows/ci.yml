@@ -118,8 +118,13 @@ jobs:
       - name: Build docs (warnings fail the build)
         shell: bash
         run: |
-          # Treat any Doxygen warning as an error.
-          warnings="$(doxygen docs/Doxyfile 2>&1 >/dev/null || true)"
+          # Treat any Doxygen warning OR a non-zero Doxygen exit as an error.
+          set -o pipefail
+          if ! warnings="$(doxygen docs/Doxyfile 2>&1 >/dev/null)"; then
+            echo "Doxygen exited non-zero:"
+            echo "$warnings"
+            exit 1
+          fi
           if [ -n "$warnings" ]; then
             echo "Doxygen emitted warnings:"
             echo "$warnings"
@@ -271,7 +276,10 @@ jobs:
       - name: Build docs (warnings fail the build)
         shell: bash
         run: |
-          warnings="$(doxygen docs/Doxyfile 2>&1 >/dev/null || true)"
+          set -o pipefail
+          if ! warnings="$(doxygen docs/Doxyfile 2>&1 >/dev/null)"; then
+            echo "Doxygen exited non-zero:"; echo "$warnings"; exit 1
+          fi
           if [ -n "$warnings" ]; then
             echo "Doxygen emitted warnings:"; echo "$warnings"; exit 1
           fi
