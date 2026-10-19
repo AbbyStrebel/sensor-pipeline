@@ -33,10 +33,16 @@ static reporter_config_t *s_config;
  */
 static size_t read_window(void)
 {
+    /* portMAX_DELAY means the take blocks until acquired, so it does not fail
+     * in practice. We still check the return and fall back to the current
+     * config value's safe default (1 == passthrough) to keep the function
+     * total even if the RTOS config ever changes to allow timed takes. */
     size_t w = 1;
     if (xSemaphoreTake(s_config->lock, portMAX_DELAY) == pdTRUE) {
         w = s_config->window;
         xSemaphoreGive(s_config->lock);
+    } else {
+        ESP_LOGW(TAG, "config lock take failed; using passthrough window");
     }
     return w;
 }
