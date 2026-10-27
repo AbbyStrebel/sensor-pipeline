@@ -43,14 +43,20 @@ sensor-pipeline/
 
 ## Building
 
-### Firmware (esp32 target)
+### Firmware (esp32 or esp32c6)
+
+Pick a target with `set-target`; everything else is identical. The target list
+is defined once in [`tools/targets.sh`](tools/targets.sh).
 
 ```sh
 . $IDF_PATH/export.sh
-idf.py set-target esp32
+idf.py set-target esp32      # or: idf.py set-target esp32c6
 idf.py build
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
+
+First build for a RISC-V target (esp32c6) needs the RISC-V toolchain:
+`$IDF_PATH/install.sh esp32,esp32c6` installs both alongside each other.
 
 ### Host tests (native gcc, not the IDF linux target)
 
@@ -116,19 +122,37 @@ Some phases need physical hardware that isn't on hand yet:
   acquiring the box + network setup.)*
 - **Sacrificial ESP32 for Phase 5.** eFuse burning (Secure Boot / flash
   encryption) is irreversible, so it is done on a board you can afford to lock,
-  in development mode. One of the three on-hand ESP32s can serve.
+  in development mode. One of the on-hand Xtensa ESP32s is the intended
+  sacrifice; the ESP32-C6 is kept un-fused for now so both targets stay usable
+  for day-to-day build/flash and the single- vs dual-core experiments.
 
 ## Toolchain notes
 
 - **Local ESP-IDF:** `v6.1-dev` (developer machine).
 - **CI ESP-IDF:** pinned to **`release-v5.5`** (stable) for reproducible builds.
   Intentional mismatch — CI catches "works on my machine" drift.
-- Plain **ESP32** (Xtensa LX6, dual-core). Secure Boot v2 uses **RSA-3072**.
+- **Supported targets** (build for all of them; CI matrices over the list):
+  - **ESP32** — Xtensa LX6, **dual-core**. Secure Boot v2 uses **RSA-3072**.
+  - **ESP32-C6** — RISC-V, **single-core** (+ LP core), Wi-Fi 6 / BLE /
+    802.15.4. Secure Boot v2 uses **ECDSA** (not RSA).
+  The authoritative list lives in [`tools/targets.sh`](tools/targets.sh);
+  adding a variant is a one-line edit there plus the CI matrices. The
+  same source runs on both — the pure-logic/hardware split (ADR-0001) keeps
+  `processor` architecture-agnostic, so a new variant touches only config/CI.
+  The single- vs dual-core contrast is intentional: it makes concurrency
+  behavior (e.g. cross-core visibility of shared state) observable on real,
+  differing hardware.
 
 ## Security / secrets (Phase 5, summary)
 
 - **On-device secrets** live in **encrypted NVS**, protected by flash encryption.
 - **Signing keys** (Secure Boot, code signing) live in **CI secrets**, never in
   the repo. `.gitignore` blocks `*.pem` / `*.key` as a backstop.
+- **Signing scheme differs by target** (decided at Phase 5 time, per board):
+  on **ESP32** (Xtensa) Secure Boot v2 uses an **RSA-3072** key; on **ESP32-C6**
+  (RISC-V) it uses an **ECDSA** key (P-256/P-384). The signing *process* and
+  key-handling are the same; only the key type/algorithm changes. No eFuses are
+  burned yet — Phase 5 is deferred, and this note just keeps the plan accurate
+  for whichever board it runs on.
 - eFuse burning is **irreversible** — only done on the sacrificial board, in
   development mode (keeps JTAG + re-flash so you can iterate).

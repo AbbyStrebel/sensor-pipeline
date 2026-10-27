@@ -6,8 +6,12 @@ against it (see [`test_target/`](../test_target/)). This requires a
 because GitHub's cloud runners have no USB-connected hardware.
 
 > **Status:** the workflow job exists and is guarded, but there is no runner
-> registered yet. Until a runner labeled `esp32` comes online, the `on-target`
-> job simply stays queued/does not run. Nothing else in CI is affected.
+> registered yet. The `on-target` job is a matrix over the supported targets
+> (`esp32`, `esp32c6`); each leg runs on a runner whose label matches its
+> chip. A leg only runs once a runner carrying that label is online, so until
+> you register one, the legs simply stay queued/do not run. Nothing else in CI
+> is affected. You can bring up one board at a time — register an `esp32c6`
+> runner and the C6 leg runs; the `esp32` leg waits for an `esp32` runner.
 
 ## ⚠️ Security: read this first
 
@@ -62,7 +66,11 @@ On the runner box (as the dedicated non-privileged user):
 
 1. In GitHub: **Settings → Actions → Runners → New self-hosted runner**. Follow
    the download/configure commands it shows. When prompted for labels, **add the
-   label `esp32`** (the job targets `runs-on: [self-hosted, esp32]`).
+   label for the board attached to this runner** — `esp32` for a Xtensa ESP32,
+   `esp32c6` for the RISC-V C6 (the job targets `runs-on: [self-hosted,
+   <target>]`). A runner with a given chip attached should carry exactly that
+   chip's label. One box can host one board, or several boards on one box can
+   each get their own runner + label.
 2. Give the runner user serial access:
    ```sh
    sudo usermod -aG uucp "$USER"   # or 'dialout' on Debian/Ubuntu/Raspberry Pi OS
@@ -74,28 +82,32 @@ On the runner box (as the dedicated non-privileged user):
    python3 -m pip install --user esptool pytest-embedded \
      pytest-embedded-serial-esp pytest-embedded-idf
    ```
-4. Find the ESP32's serial port and set it as a repo variable:
+4. Find the board's serial port and set it as a repo variable. The port
+   variable is **per target**: `ESP32_PORT` for the esp32 runner, `ESP32C6_PORT`
+   for the esp32c6 runner (both default to `/dev/ttyUSB0` if unset):
    ```sh
-   ls -l /dev/ttyUSB* /dev/ttyACM*   # identify the ESP32 (CP210x/CH340/native)
+   ls -l /dev/ttyUSB* /dev/ttyACM*   # identify the board (CP210x/CH340/native)
    ```
    Then in GitHub: **Settings → Secrets and variables → Actions → Variables →
-   New variable**, name `ESP32_PORT`, value e.g. `/dev/ttyUSB0`. (The job
-   defaults to `/dev/ttyUSB0` if unset.)
+   New variable**, name `ESP32_PORT` or `ESP32C6_PORT`, value e.g.
+   `/dev/ttyUSB0`.
 5. Start the runner (`./run.sh`, or install it as a service with
    `./svc.sh install && ./svc.sh start` under the dedicated user).
 
-Once it is online and labeled `esp32`, the next push to `main` runs the
-on-target job automatically.
+Once it is online and labeled with its chip (`esp32` or `esp32c6`), the next
+push to `main` runs that target's on-target leg automatically.
 
 ## Known local-testing note
 
 When developing the pytest-embedded tests on the dev machine, the correct
-invocation is (from `test_target/`):
+invocation is (from `test_target/`), substituting your chip for `<TARGET>`
+(`esp32` or `esp32c6`):
 
 ```sh
 . "$IDF_PATH/export.sh"
+idf.py -C .. set-target <TARGET>
 idf.py -C .. build
-pytest --target esp32 --port <PORT> --app-path ..
+pytest --target <TARGET> --port <PORT> --app-path ..
 ```
 
 On some host setups pytest-embedded's post-flash serial monitor may not capture

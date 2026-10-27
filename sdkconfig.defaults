@@ -1,8 +1,10 @@
-# Project-wide defaults. Checked into git so builds are reproducible;
-# the generated sdkconfig (machine-specific) is gitignored.
-
-# Target chip.
-CONFIG_IDF_TARGET="esp32"
+# Project-wide defaults, shared by ALL targets. Checked into git so builds are
+# reproducible; the generated sdkconfig (machine-specific) is gitignored.
+#
+# NOTE: the target chip is intentionally NOT pinned here. Selecting it with
+# `idf.py set-target <chip>` is authoritative, which is what lets this one
+# project build for multiple variants (see tools/targets.sh). Per-target
+# overrides, if ever needed, go in sdkconfig.defaults.<target>.
 
 # --- Debugging aids useful for RTOS learning (cheap, keep on in dev) ---
 # Detect task stack overflows (method 2 = canary + SP check).
