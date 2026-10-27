@@ -110,8 +110,68 @@ idf.py -C .. build
 pytest --target <TARGET> --port <PORT> --app-path ..
 ```
 
-On some host setups pytest-embedded's post-flash serial monitor may not capture
-output even though flashing succeeds and the board prints normally (verifiable
-with a plain `pyserial` read). This is environment-specific (serial driver /
-esptool / pytest-embedded version interaction). The firmware and test logic are
-independent of it; final on-target validation happens on the runner.
+## Known issue: pytest-embedded serial monitor captures nothing (flaky)
+
+**Symptom.** `pytest` flashes the board successfully, then every `dut.expect(...)`
+times out with an *empty* capture buffer (`Bytes in current buffer:` is blank),
+even though the board boots and prints normally.
+
+**What has been verified (2026-10):**
+
+- The firmware is fine — a plain `pyserial` read of the same port shows the full
+  boot banner and steady `seq=... raw=... smoothed=...` output on both the
+  esp32c6 (`/dev/ttyACM1`, native USB-Serial/JTAG) and the Xtensa esp32.
+- It is **not** local-environment-specific: it reproduces inside the pinned CI
+  container (`espressif/idf:release-v5.5`, pytest-embedded 2.9.3) with the board
+  passed through via `--device`. So the eventual self-hosted `on-target` job is
+  expected to hit it too.
+- It is **session-dependent and flaky**, not a clean config switch. On an
+  identical setup (esp32c6, `--shm-size=1g`, pinned container):
+  - a single test, run in isolation, passed (observed 4/4 at one point),
+  - two tests passed once,
+  - the full suite failed repeatedly with all per-test `dut.log` files empty —
+    including the very test that had passed when run alone.
+
+**Hypotheses tested and DISPROVEN (don't re-chase these):**
+
+- *Local environment (Python 3.14 / IDF v6.1-dev).* No — reproduces in the
+  pinned `espressif/idf:release-v5.5` container (Python 3.12, IDF v5.5.6).
+- *Docker `/dev/shm` too small for the multiprocessing queue.* No — raising
+  `--shm-size` to 1g did not fix it.
+- *pytest output capture.* No — fails with and without `-s`.
+- *Native-USB (C6) re-enumeration on reset.* No — also fails on the Xtensa
+  esp32, which uses an external UART bridge that does not re-enumerate.
+- *Per-test serial port close/reopen across function-scoped `dut` fixtures.*
+  No — the test was refactored to a **single** test function (one flash, one
+  monitor session) and it still fails 3/3.
+- *Flash/reset race.* No — running with `--skip-autoflash y` (monitor an
+  already-running board, exactly what the working manual `pyserial` read does)
+  **still** captures nothing.
+
+**Where that leaves the root cause (still OPEN).** With flashing, reset,
+re-enumeration, shm, capture mode, and fixture scope all eliminated, the
+remaining suspect is pytest-embedded's own serial *reader* (its background
+multiprocessing reader → `msg_queue` → `pexpect`) not delivering bytes in this
+environment: a plain `pyserial` read of the same port in the same container
+gets data, but pytest-embedded's reader gets an empty buffer. This is inside
+pytest-embedded, not in our test code or firmware. The one observed pass was
+almost certainly a timing fluke, not a reproducible good config.
+
+**Status / impact.** This does NOT block the multi-target work: both targets
+build clean and run correctly on real hardware, verified directly by `pyserial`
+reads (full boot banner + steady, in-order, correctly-smoothed `seq=` stream on
+both the esp32 and esp32c6). It DOES block trusting the automated `on-target`
+CI job. Recommended next steps (not yet attempted, outside this session's
+scope):
+  - try a newer/older `pytest-embedded` pin, or the versions ESP-IDF's own CI
+    uses, to see if the reader behaves;
+  - try without the Docker container (run the reader on a bare host) on the
+    eventual self-hosted runner — the container's process/IPC model is a prime
+    suspect and the real runner won't necessarily use Docker;
+  - open an upstream issue against `espressif/pytest-embedded` with the
+    "plain pyserial reads, pytest-embedded reader does not" reproducer;
+  - as an interim gate, validate on-target with a plain `pyserial` smoke script
+    instead of pytest-embedded.
+
+For now, final on-target validation can be done by a plain `pyserial` read; the
+pytest-embedded capture failure is tracked here with the evidence above.
