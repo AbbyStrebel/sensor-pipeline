@@ -3,6 +3,21 @@
 Rules for working in this ESP32 / ESP-IDF repo. The *why* lives in
 `docs/adr/`; this file is the short, always-on checklist.
 
+## Supported build targets
+
+- Two chips are first-class: **esp32** (Xtensa, dual-core) and **esp32c6**
+  (RISC-V, single-core). Build/CI must keep both working.
+- The authoritative target list is `tools/targets.sh` (`SUPPORTED_TARGETS`).
+  Adding a variant = one edit there, plus the CI matrices in `ci.yml`. Do not
+  hardcode a single chip in build scripts or `sdkconfig.defaults`.
+- The target is chosen by `idf.py set-target <chip>`, NOT pinned in
+  `sdkconfig.defaults`. Any target-specific config goes in
+  `sdkconfig.defaults.<target>`.
+- Single- vs dual-core is an intentional contrast to explore, not a bug to
+  hide. Code that touches cross-task shared state should be correct on the
+  dual-core esp32 (prefer passing data via task args / queues over relying on
+  incidental single-core serialization).
+
 ## The logic/hardware split is a hard rule (ADR-0001)
 
 - `components/processor/` is PURE logic. It must include ONLY standard C

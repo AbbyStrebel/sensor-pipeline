@@ -20,12 +20,18 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Build the real firmware for the esp32 target. Proves the hardware-facing
-  # code and component wiring compile with the pinned, stable ESP-IDF release.
+  # Build the real firmware for every supported target. Proves the hardware-
+  # facing code and component wiring compile with the pinned, stable ESP-IDF
+  # release on each chip. The authoritative target list lives in
+  # tools/targets.sh; keep this matrix in sync when adding a variant.
   # ---------------------------------------------------------------------------
   firmware-build:
-    name: Firmware build (esp32)
+    name: Firmware build (${{ matrix.target }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false        # one target failing shouldn't hide the others
+      matrix:
+        target: [esp32, esp32c6]
     container:
       image: espressif/idf:release-v5.5
     steps:
@@ -35,13 +41,13 @@ jobs:
         shell: bash
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py set-target esp32
+          idf.py set-target ${{ matrix.target }}
           idf.py build
 
       - name: Upload firmware binary
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-esp32
+          name: firmware-${{ matrix.target }}
           path: build/sensor_pipeline.bin
           if-no-files-found: error
 
@@ -180,12 +186,18 @@ jobs:
         run: ./tools/clang-tidy.sh
 
   # ---------------------------------------------------------------------------
-  # Package a complete, flashable, verifiable firmware bundle and upload it as a
-  # CI artifact on every push/PR (ephemeral, for testing + debugging).
+  # Package a complete, flashable, verifiable firmware bundle for each supported
+  # target and upload it as a CI artifact on every push/PR (ephemeral, for
+  # testing + debugging). One bundle per chip; artifact names are suffixed with
+  # the target so they don't collide.
   # ---------------------------------------------------------------------------
   package:
-    name: Package firmware bundle
+    name: Package firmware bundle (${{ matrix.target }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [esp32, esp32c6]
     container:
       image: espressif/idf:release-v5.5
     steps:
@@ -197,6 +209,7 @@ jobs:
         shell: bash
         run: |
           . "$IDF_PATH/export.sh"
+          idf.py set-target ${{ matrix.target }}
           idf.py build
 
       - name: Package bundle
@@ -208,19 +221,25 @@ jobs:
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-bundle
+          name: firmware-bundle-${{ matrix.target }}
           path: dist/*.tar.gz
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # On a version tag (v*), publish the bundle to a GitHub Release.
+  # On a version tag (v*), publish a bundle for each target to a GitHub Release.
   # This is the ONLY job granted contents: write, and it only runs on tags.
+  # The matrix runs once per target; action-gh-release appends each target's
+  # bundle to the same Release (no clobber).
   # ---------------------------------------------------------------------------
   release:
-    name: Publish GitHub Release
+    name: Publish GitHub Release (${{ matrix.target }})
     needs: package
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [esp32, esp32c6]
     permissions:
       contents: write   # scoped to this job only; needed to create the Release
     container:
@@ -234,6 +253,7 @@ jobs:
         shell: bash
         run: |
           . "$IDF_PATH/export.sh"
+          idf.py set-target ${{ matrix.target }}
           idf.py build
 
       - name: Package bundle
@@ -295,34 +315,46 @@ jobs:
         uses: actions/deploy-pages@v4
 
   # ---------------------------------------------------------------------------
-  # On-target hardware test. Runs on a SELF-HOSTED runner that has an ESP32
-  # attached (runner label: esp32). SECURITY: self-hosted + public repo is only
-  # safe if this job runs exclusively on trusted events. It is therefore:
+  # On-target hardware test. Runs on a SELF-HOSTED runner that has the matching
+  # board attached. One matrix leg per target; each leg targets a runner label
+  # equal to the target name (esp32, esp32c6). A leg only actually runs when a
+  # runner carrying that label is online — so if you only have the C6 plugged
+  # in, the esp32 leg just stays queued and vice versa. That lets both chips be
+  # first-class without requiring both to be present.
+  #
+  # SECURITY: self-hosted + public repo is only safe if this job runs
+  # exclusively on trusted events. It is therefore:
   #   - gated to push events on main of THIS repo (never PRs, never forks),
   #   - Pi/SBC-friendly: it does NOT build; it downloads the prebuilt bundle
-  #     from the `package` job, flashes it, and runs pytest-embedded.
+  #     for its target from the `package` job, flashes it, runs pytest-embedded.
   # See docs/self-hosted-runner.md for runner setup + hardening.
   # ---------------------------------------------------------------------------
   on-target:
-    name: On-target test (self-hosted ESP32)
+    name: On-target test (${{ matrix.target }})
     needs: package
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       github.repository == 'AbbyStrebel/sensor-pipeline'
-    runs-on: [self-hosted, esp32]
-    # The serial port the ESP32 enumerates as on the runner. Override with a
-    # repository variable (Settings -> Secrets and variables -> Actions ->
-    # Variables) named ESP32_PORT; defaults to /dev/ttyUSB0.
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [esp32, esp32c6]
+    # Pick the runner whose label matches this target's chip.
+    runs-on: [self-hosted, "${{ matrix.target }}"]
+    # The serial port the board enumerates as on the runner. Override per target
+    # with a repository variable (Settings -> Secrets and variables -> Actions
+    # -> Variables): ESP32_PORT for esp32, ESP32C6_PORT for esp32c6. Both
+    # default to /dev/ttyUSB0.
     env:
-      ESP32_PORT: ${{ vars.ESP32_PORT || '/dev/ttyUSB0' }}
+      BOARD_PORT: ${{ matrix.target == 'esp32c6' && (vars.ESP32C6_PORT || '/dev/ttyUSB0') || (vars.ESP32_PORT || '/dev/ttyUSB0') }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Download firmware bundle
         uses: actions/download-artifact@v4
         with:
-          name: firmware-bundle
+          name: firmware-bundle-${{ matrix.target }}
           path: bundle
 
       - name: Extract bundle
@@ -340,7 +372,7 @@ jobs:
       - name: Flash prebuilt bundle
         shell: bash
         working-directory: bundle/extracted
-        run: ./flash.sh "$ESP32_PORT"
+        run: ./flash.sh "$BOARD_PORT"
 
       - name: Run on-target tests
         shell: bash
@@ -349,6 +381,6 @@ jobs:
         # the flashed binaries' metadata; the board is already flashed above.
         run: |
           python3 -m pytest -v \
-            --target esp32 \
-            --port "$ESP32_PORT" \
+            --target ${{ matrix.target }} \
+            --port "$BOARD_PORT" \
             --app-path "$GITHUB_WORKSPACE/bundle/extracted"
